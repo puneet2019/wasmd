@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	QueryBalance       = keeper.QueryBalance
+	QueryMessage       = keeper.QueryMessage
 	ModuleName         = types.ModuleName
 	StoreKey           = types.StoreKey
 	QuerierRoute       = types.QuerierRoute

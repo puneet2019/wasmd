@@ -105,7 +105,7 @@ func (keeper BaseMessageKeeper) GetMessages(ctx sdk.Context, addr sdk.AccAddress
 
 	existingMsgs := kvstore.Get([]byte(addr))
 	var messages types.MsgTextsSend
-	err := keeper.cdc.UnmarshalJSON(existingMsgs, messages)
+	err := keeper.cdc.UnmarshalJSON(existingMsgs, &messages)
 	if err != nil {
 		messages = types.MsgTextsSend{}
 	}
@@ -129,7 +129,7 @@ func (keeper BaseMessageKeeper) SetMessage(ctx sdk.Context, addr sdk.AccAddress,
 
 	existingMsgs := kvstore.Get([]byte(addr))
 	var messages types.MsgTextsSend
-	err := keeper.cdc.UnmarshalJSON(existingMsgs, messages)
+	err := keeper.cdc.UnmarshalJSON(existingMsgs, &messages)
 	if err != nil {
 		messages = types.MsgTextsSend{}
 	}
@@ -150,7 +150,7 @@ func (keeper BaseMessageKeeper) SetMessage(ctx sdk.Context, addr sdk.AccAddress,
 
 	existingMsgs = kvstore.Get([]byte(toAddr))
 	var messagesto types.MsgTextsSend
-	err = keeper.cdc.UnmarshalJSON(existingMsgs, messagesto)
+	err = keeper.cdc.UnmarshalJSON(existingMsgs, &messagesto)
 	if err != nil {
 		messages = types.MsgTextsSend{}
 	}

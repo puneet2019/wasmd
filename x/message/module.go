@@ -63,9 +63,7 @@ func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
 }
 
 // GetQueryCmd returns no root query command for the bank module.
-func (AppModuleBasic) GetQueryCmd(_ *codec.Codec) *cobra.Command { return nil }
-
-//____________________________________________________________________________
+func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command { return cli.GetQueryCmd(cdc) }
 
 // AppModule implements an application module for the bank module.
 type AppModule struct {
