@@ -2,8 +2,9 @@ package keeper
 
 import (
 	"encoding/binary"
-	"github.com/cosmos/cosmos-sdk/x/staking"
 	"path/filepath"
+
+	"github.com/cosmos/cosmos-sdk/x/staking"
 
 	wasm "github.com/CosmWasm/go-cosmwasm"
 	wasmTypes "github.com/CosmWasm/go-cosmwasm/types"
@@ -15,6 +16,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/bank"
 	"github.com/tendermint/tendermint/crypto"
 
+	"github.com/CosmWasm/wasmd/x/message"
 	"github.com/CosmWasm/wasmd/x/wasm/internal/types"
 )
 
@@ -33,6 +35,7 @@ type Keeper struct {
 	cdc           *codec.Codec
 	accountKeeper auth.AccountKeeper
 	bankKeeper    bank.Keeper
+	messageKeeper message.Keeper
 
 	wasmer       wasm.Wasmer
 	queryPlugins QueryPlugins
@@ -43,7 +46,7 @@ type Keeper struct {
 
 // NewKeeper creates a new contract Keeper instance
 // If customEncoders is non-nil, we can use this to override some of the message handler, especially custom
-func NewKeeper(cdc *codec.Codec, storeKey sdk.StoreKey, accountKeeper auth.AccountKeeper, bankKeeper bank.Keeper,
+func NewKeeper(cdc *codec.Codec, storeKey sdk.StoreKey, accountKeeper auth.AccountKeeper, bankKeeper bank.Keeper, messageKeeper message.Keeper,
 	stakingKeeper staking.Keeper,
 	router sdk.Router, homeDir string, wasmConfig types.WasmConfig, supportedFeatures string, customEncoders *MessageEncoders, customPlugins *QueryPlugins) Keeper {
 	wasmer, err := wasm.NewWasmer(filepath.Join(homeDir, "wasm"), supportedFeatures, wasmConfig.CacheSize)
@@ -59,6 +62,7 @@ func NewKeeper(cdc *codec.Codec, storeKey sdk.StoreKey, accountKeeper auth.Accou
 		wasmer:        *wasmer,
 		accountKeeper: accountKeeper,
 		bankKeeper:    bankKeeper,
+		messageKeeper: messageKeeper,
 		messenger:     messenger,
 		queryGasLimit: wasmConfig.SmartQueryGasLimit,
 	}

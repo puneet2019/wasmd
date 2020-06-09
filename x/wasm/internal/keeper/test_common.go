@@ -2,15 +2,17 @@ package keeper
 
 import (
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/x/distribution"
 	"testing"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/x/distribution"
 
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	dbm "github.com/tendermint/tm-db"
 
+	"github.com/CosmWasm/wasmd/x/message"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/store"
@@ -36,6 +38,7 @@ func MakeTestCodec() *codec.Codec {
 	// cdc.RegisterConcrete(&auth.BaseAccount{}, "test/wasm/BaseAccount", nil)
 	auth.AppModuleBasic{}.RegisterCodec(cdc)
 	bank.AppModuleBasic{}.RegisterCodec(cdc)
+	message.AppModuleBasic{}.RegisterCodec(cdc)
 	supply.AppModuleBasic{}.RegisterCodec(cdc)
 	staking.AppModuleBasic{}.RegisterCodec(cdc)
 	distribution.AppModuleBasic{}.RegisterCodec(cdc)
@@ -66,6 +69,7 @@ type TestKeepers struct {
 func CreateTestInput(t *testing.T, isCheckTx bool, tempDir string, supportedFeatures string, encoders *MessageEncoders, queriers *QueryPlugins) (sdk.Context, TestKeepers) {
 	keyContract := sdk.NewKVStoreKey(wasmTypes.StoreKey)
 	keyAcc := sdk.NewKVStoreKey(auth.StoreKey)
+	keyMessage := sdk.NewKVStoreKey(message.StoreKey)
 	keyStaking := sdk.NewKVStoreKey(staking.StoreKey)
 	keySupply := sdk.NewKVStoreKey(supply.StoreKey)
 	keyDistro := sdk.NewKVStoreKey(distribution.StoreKey)
@@ -76,6 +80,7 @@ func CreateTestInput(t *testing.T, isCheckTx bool, tempDir string, supportedFeat
 	ms := store.NewCommitMultiStore(db)
 	ms.MountStoreWithDB(keyContract, sdk.StoreTypeIAVL, db)
 	ms.MountStoreWithDB(keyAcc, sdk.StoreTypeIAVL, db)
+	ms.MountStoreWithDB(keyMessage, sdk.StoreTypeIAVL, db)
 	ms.MountStoreWithDB(keyParams, sdk.StoreTypeIAVL, db)
 	ms.MountStoreWithDB(keyStaking, sdk.StoreTypeIAVL, db)
 	ms.MountStoreWithDB(keySupply, sdk.StoreTypeIAVL, db)
@@ -105,6 +110,15 @@ func CreateTestInput(t *testing.T, isCheckTx bool, tempDir string, supportedFeat
 		nil,
 	)
 	bankKeeper.SetSendEnabled(ctx, true)
+
+	messageKeeper := message.NewBaseKeeper(
+		cdc,        // amino codec
+		keyMessage, // target store
+		pk.Subspace(auth.DefaultParamspace),
+		accountKeeper,
+		nil,
+	)
+	messageKeeper.SetSendEnabled(ctx, true)
 
 	// this is also used to initialize module accounts (so nil is meaningful here)
 	maccPerms := map[string][]string{
@@ -160,7 +174,7 @@ func CreateTestInput(t *testing.T, isCheckTx bool, tempDir string, supportedFeat
 	// Load default wasm config
 	wasmConfig := wasmTypes.DefaultWasmConfig()
 
-	keeper := NewKeeper(cdc, keyContract, accountKeeper, bankKeeper, stakingKeeper, router, tempDir, wasmConfig, supportedFeatures, encoders, queriers)
+	keeper := NewKeeper(cdc, keyContract, accountKeeper, bankKeeper, messageKeeper, stakingKeeper, router, tempDir, wasmConfig, supportedFeatures, encoders, queriers)
 	// add wasm handler so we can loop-back (contracts calling contracts)
 	router.AddRoute(wasmTypes.RouterKey, TestHandler(keeper))
 
