@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	wasmTypes "github.com/CosmWasm/go-cosmwasm/types"
+	msgTypes "github.com/CosmWasm/wasmd/x/message"
 	"github.com/CosmWasm/wasmd/x/wasm/internal/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -28,12 +29,14 @@ func NewMessageHandler(router sdk.Router, customEncoders *MessageEncoders) Messa
 
 type BankEncoder func(sender sdk.AccAddress, msg *wasmTypes.BankMsg) ([]sdk.Msg, error)
 type CustomEncoder func(sender sdk.AccAddress, msg json.RawMessage) ([]sdk.Msg, error)
+type MessageEncoder func(sender sdk.AccAddress, msg *wasmTypes.MessageMsg) ([]sdk.Msg, error)
 type StakingEncoder func(sender sdk.AccAddress, msg *wasmTypes.StakingMsg) ([]sdk.Msg, error)
 type WasmEncoder func(sender sdk.AccAddress, msg *wasmTypes.WasmMsg) ([]sdk.Msg, error)
 
 type MessageEncoders struct {
 	Bank    BankEncoder
 	Custom  CustomEncoder
+	Message MessageEncoder
 	Staking StakingEncoder
 	Wasm    WasmEncoder
 }
@@ -42,6 +45,7 @@ func DefaultEncoders() MessageEncoders {
 	return MessageEncoders{
 		Bank:    EncodeBankMsg,
 		Custom:  NoCustomMsg,
+		Message: EncodeMessageMsg,
 		Staking: EncodeStakingMsg,
 		Wasm:    EncodeWasmMsg,
 	}
@@ -56,6 +60,9 @@ func (e MessageEncoders) Merge(o *MessageEncoders) MessageEncoders {
 	}
 	if o.Custom != nil {
 		e.Custom = o.Custom
+	}
+	if o.Message != nil {
+		e.Message = o.Message
 	}
 	if o.Staking != nil {
 		e.Staking = o.Staking
@@ -72,12 +79,14 @@ func (e MessageEncoders) Encode(contractAddr sdk.AccAddress, msg wasmTypes.Cosmo
 		return e.Bank(contractAddr, msg.Bank)
 	case msg.Custom != nil:
 		return e.Custom(contractAddr, msg.Custom)
+	case msg.Message != nil:
+		return e.Message(contractAddr, msg.Message)
 	case msg.Staking != nil:
 		return e.Staking(contractAddr, msg.Staking)
 	case msg.Wasm != nil:
 		return e.Wasm(contractAddr, msg.Wasm)
 	}
-	return nil, sdkerrors.Wrap(types.ErrInvalidMsg, "Unknown variant of Wasm")
+	return nil, sdkerrors.Wrap(types.ErrInvalidMsg, "Unknown variant of Wasm, cannot Encode")
 }
 
 func EncodeBankMsg(sender sdk.AccAddress, msg *wasmTypes.BankMsg) ([]sdk.Msg, error) {
@@ -109,6 +118,31 @@ func EncodeBankMsg(sender sdk.AccAddress, msg *wasmTypes.BankMsg) ([]sdk.Msg, er
 
 func NoCustomMsg(sender sdk.AccAddress, msg json.RawMessage) ([]sdk.Msg, error) {
 	return nil, sdkerrors.Wrap(types.ErrInvalidMsg, "Custom variant not supported")
+}
+
+func EncodeMessageMsg(sender sdk.AccAddress, msg *wasmTypes.MessageMsg) ([]sdk.Msg, error) {
+	if msg.Send == nil {
+		return nil, sdkerrors.Wrap(types.ErrInvalidMsg, "Unknown variant of Message module")
+	}
+	if len(msg.Send.Text) == 0 {
+		return nil, nil
+	}
+	fromAddr, stderr := sdk.AccAddressFromBech32(msg.Send.FromAddress)
+	if stderr != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, msg.Send.FromAddress)
+	}
+	toAddr, stderr := sdk.AccAddressFromBech32(msg.Send.ToAddress)
+	if stderr != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, msg.Send.ToAddress)
+	}
+	toSend := msg.Send.Text
+
+	sdkMsg := msgTypes.MsgTextSend{
+		FromAddress: fromAddr,
+		ToAddress:   toAddr,
+		Text:        toSend,
+	}
+	return []sdk.Msg{sdkMsg}, nil
 }
 
 func EncodeStakingMsg(sender sdk.AccAddress, msg *wasmTypes.StakingMsg) ([]sdk.Msg, error) {

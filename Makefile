@@ -72,8 +72,8 @@ ifeq ($(OS),Windows_NT)
 	go build -mod=readonly $(BUILD_FLAGS) -o build/wasmd.exe ./cmd/wasmd
 	go build -mod=readonly $(BUILD_FLAGS) -o build/wasmcli.exe ./cmd/wasmcli
 else
-	go build -mod=readonly $(BUILD_FLAGS) -o build/wasmd ./cmd/wasmd
-	go build -mod=readonly $(BUILD_FLAGS) -o build/wasmcli ./cmd/wasmcli
+	go build  $(BUILD_FLAGS) -o build/wasmd ./cmd/wasmd
+	go build  $(BUILD_FLAGS) -o build/wasmcli ./cmd/wasmcli
 endif
 
 build-linux: go.sum
@@ -83,12 +83,12 @@ build-contract-tests-hooks:
 ifeq ($(OS),Windows_NT)
 	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests.exe ./cmd/contract_tests
 else
-	go build -mod=readonly $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
+	go build $(BUILD_FLAGS) -o build/contract_tests ./cmd/contract_tests
 endif
 
 install: go.sum
-	go install -mod=readonly $(BUILD_FLAGS) ./cmd/wasmd
-	go install -mod=readonly $(BUILD_FLAGS) ./cmd/wasmcli
+	go install  $(BUILD_FLAGS) ./cmd/wasmd
+	go install  $(BUILD_FLAGS) ./cmd/wasmcli
 
 
 ########################################
@@ -120,7 +120,7 @@ go-mod-cache: go.sum
 
 go.sum: go.mod
 	@echo "--> Ensure dependencies have not been modified"
-	@go mod verify
+	# @go mod verify
 
 draw-deps:
 	@# requires brew install graphviz or apt-get install graphviz
